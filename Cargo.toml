@@ -1,0 +1,10 @@
+[package]
+name = "entity_benchmark"
+version = "0.1.0"
+authors = ["Tinco Andringa <mail@tinco.nl>"]
+
+[dependencies]
+entity_rust = ">= 0.0.3"
+lazy_static = "*"
+shared-mutex = "*"
+uuid = "*"
