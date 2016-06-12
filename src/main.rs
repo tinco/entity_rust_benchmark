@@ -16,7 +16,6 @@ system!( tick_logger {
 });
 
 pub fn main() {
-    println!("Hello world");
 	tick_logger::register();
 	entity_rust::run(1);
 }
