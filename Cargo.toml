@@ -4,7 +4,9 @@ version = "0.1.0"
 authors = ["Tinco Andringa <mail@tinco.nl>"]
 
 [dependencies]
-entity_rust = ">= 0.0.3"
+entity_rust = { version =">= 0.0.3" }
 lazy_static = "*"
 shared-mutex = "*"
 uuid = "*"
+sdl2 = "0.19.0"
+sdl2_ttf = "0.19.0"
