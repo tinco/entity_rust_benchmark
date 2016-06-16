@@ -7,6 +7,7 @@ extern crate uuid;
 extern crate sdl2;
 
 pub use entity_rust::{ events, tick };
+pub use std::time::{ Duration, Instant };
 pub use std::thread;
 use sdl2::rect::Rect;
 
@@ -18,7 +19,7 @@ system!( tick_logger {
 	state! { }
 
 	on!( tick, {}, {}) self, data => {
-		println!("Tick!");
+		//println!("Tick!");
 	}
 });
 
@@ -52,14 +53,23 @@ pub fn get_centered_rect(screen_width: u32, screen_height: u32, rect_width: u32,
     rect!(cx, cy, w, h)
 }
 
+const NANOS_PER_SEC: u32 = 1_000_000_000;
+
 system!( graphics {
 	state! {
-		frame: i64,
-		tick: i64
+		last_frame: Option<super::Instant>,
+		last_tick: Option<super::Instant>,
+		ticks_per_second: i64
 	}
 
 	on! (tick , {}, {} ) self, data => {
-		self.tick += 1;
+		let now = super::Instant::now();
+		let last_tick = self.last_tick.unwrap_or(super::Instant::now());
+		let tick_duration = (now - last_tick).subsec_nanos();
+		if tick_duration > 0 {
+			self.ticks_per_second = (super::NANOS_PER_SEC / tick_duration) as i64;
+		}
+		self.last_tick = Some(super::Instant::now());
 	}
 
 	on! (start_graphics , {}, {} ) self, data => {
@@ -112,17 +122,21 @@ system!( graphics {
 					}
 				}
 
-				let frame: i64;
-				let tick: i64;
+				let last_frame: super::Instant;
+				let ticks_per_second: i64;
 
 				{
 					let mut state = STATE.write().expect("Graphics lock is corrupted");
-					state.frame += 1;
-					frame = state.frame;
-					tick = state.tick;
+					last_frame = state.last_frame.unwrap_or(super::Instant::now());
+					state.last_frame = Some(super::Instant::now());
+					ticks_per_second = state.ticks_per_second;
 				}
 
-				let text = format!("Ticks: {}\nFrames: {}", frame, tick);
+				let now = super::Instant::now();
+				let frame_duration = now - last_frame;
+				let frames_per_second = super::NANOS_PER_SEC / frame_duration.subsec_nanos();
+
+				let text = format!("Ticks: {}\nFPS: {}", ticks_per_second, frames_per_second);
 
 				 // render a surface, and convert it to a texture bound to the renderer
 				let surface = font.render(&text).blended(text_color).unwrap();
