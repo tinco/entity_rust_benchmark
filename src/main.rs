@@ -6,12 +6,9 @@ extern crate shared_mutex;
 extern crate uuid;
 extern crate sdl2;
 
-pub use entity_rust::{ events, tick };
-pub use std::time::{ Duration, Instant };
-pub use std::thread;
-
-
 pub struct Hole {}
+
+pub use entity_rust::{ tick };
 
 event!{ start_graphics , }
 
@@ -23,27 +20,31 @@ system!( tick_logger {
 	}
 });
 
-const NANOS_PER_SEC: u32 = 1_000_000_000;
 
 system!( graphics {
+	use std::time::{ Duration, Instant };
+	use std::thread;
+
+	const NANOS_PER_SEC: u32 = 1_000_000_000;
+
 	state! {
-		last_frame: Option<super::Instant>,
-		last_tick: Option<super::Instant>,
+		last_frame: Option<Instant>,
+		last_tick: Option<Instant>,
 		ticks_per_second: i64
 	}
 
 	on! (tick , {}, {} ) self, data => {
-		let last_tick = self.last_tick.unwrap_or(super::Instant::now());
-		let now = super::Instant::now();
+		let last_tick = self.last_tick.unwrap_or(Instant::now());
+		let now = Instant::now();
 		let tick_duration = (now - last_tick).subsec_nanos();
 		if tick_duration > 0 {
-			self.ticks_per_second = (super::NANOS_PER_SEC / tick_duration) as i64;
+			self.ticks_per_second = (NANOS_PER_SEC / tick_duration) as i64;
 		}
-		self.last_tick = Some(super::Instant::now());
+		self.last_tick = Some(Instant::now());
 	}
 
 	on! (start_graphics , {}, {} ) self, data => {
-		super::thread::spawn(move || {
+		thread::spawn(move || {
 			extern crate sdl2;
 			extern crate sdl2_ttf;
 
@@ -93,19 +94,19 @@ system!( graphics {
 					}
 				}
 
-				let last_frame: super::Instant;
+				let last_frame: Instant;
 				let ticks_per_second: i64;
 
 				{
 					let mut state = STATE.write().expect("Graphics lock is corrupted");
-					last_frame = state.last_frame.unwrap_or(super::Instant::now());
-					state.last_frame = Some(super::Instant::now());
+					last_frame = state.last_frame.unwrap_or(Instant::now());
+					state.last_frame = Some(Instant::now());
 					ticks_per_second = state.ticks_per_second;
 				}
 
-				let now = super::Instant::now();
+				let now = Instant::now();
 				let frame_duration = now - last_frame;
-				let frames_per_second = super::NANOS_PER_SEC / frame_duration.subsec_nanos();
+				let frames_per_second = NANOS_PER_SEC / frame_duration.subsec_nanos();
 
 				let text = format!("Ticks: {}  FPS: {}", ticks_per_second, frames_per_second);
 
