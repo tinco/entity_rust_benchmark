@@ -33,8 +33,8 @@ system!( graphics {
 	}
 
 	on! (tick , {}, {} ) self, data => {
-		let now = super::Instant::now();
 		let last_tick = self.last_tick.unwrap_or(super::Instant::now());
+		let now = super::Instant::now();
 		let tick_duration = (now - last_tick).subsec_nanos();
 		if tick_duration > 0 {
 			self.ticks_per_second = (super::NANOS_PER_SEC / tick_duration) as i64;
