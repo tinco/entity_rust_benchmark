@@ -5,63 +5,39 @@ extern crate lazy_static;
 extern crate shared_mutex;
 extern crate uuid;
 extern crate sdl2;
+extern crate sdl2_ttf;
 
 pub struct Hole {}
 
-pub use entity_rust::{ tick };
-
-event!{ start_graphics , }
-
-system!( tick_logger {
-	state! { }
-
-	on!( tick, {}, {}) self, data => {
-		//println!("Tick!");
-	}
-});
-
-
 system!( graphics {
-	use std::time::{ Duration, Instant };
 	use std::thread;
+	use sdl2;
+	use sdl2::pixels::{Color};
+	use sdl2::event::{Event};
+	use sdl2_ttf;
+	use sdl2::render::Renderer;
 
-	const NANOS_PER_SEC: u32 = 1_000_000_000;
-
-	state! {
-		last_frame: Option<Instant>,
-		last_tick: Option<Instant>,
-		ticks_per_second: i64
+	pub struct Context<'a> {
+		pub renderer: &'a mut Renderer<'a>,
+		pub sdl: &'a sdl2::Sdl,
+		pub ttf: &'a sdl2_ttf::Sdl2TtfContext
 	}
+	
+	event!{ start_graphics , }
 
-	on! (tick , {}, {} ) self, data => {
-		let last_tick = self.last_tick.unwrap_or(Instant::now());
-		let now = Instant::now();
-		let tick_duration = (now - last_tick).subsec_nanos();
-		if tick_duration > 0 {
-			self.ticks_per_second = (NANOS_PER_SEC / tick_duration) as i64;
-		}
-		self.last_tick = Some(Instant::now());
-	}
+	sync_event!{ draw, context: &'a super::Context<'a>}
 
-	on! (start_graphics , {}, {} ) self, data => {
+	state! {}
+
+	on start_graphics , {}, {}, (self, data) => {
 		thread::spawn(move || {
-			extern crate sdl2;
-			extern crate sdl2_ttf;
-
-			use sdl2::pixels::{Color};
-			use sdl2::event::{Event};
-			use sdl2::render::{Renderer, Texture, TextureQuery};
-			use std::path::Path;
-			use sdl2::rect::Rect;
-
-
 			let SCREEN_WIDTH = 800;
 			let SCREEN_HEIGHT = 600;
 
 			let sdl_context = sdl2::init().expect("Could not initialize sdl2");
 			let ttf_context = sdl2_ttf::init().expect("Could not initialize ttf");
-			let video = sdl_context.video().expect("Could not set up sdl context");
-			
+			let video = sdl_context.video().expect("Could not set up sdl video context");
+
 			let window = video
 				.window("Entity Rust benchmark", SCREEN_WIDTH, SCREEN_HEIGHT)
 				.position_centered()
@@ -79,10 +55,6 @@ system!( graphics {
 			renderer.clear();
 			renderer.present();
 
-			let font_path = Path::new("res/SourceSansPro-Regular.ttf");
-			let mut font = ttf_context.load_font(font_path, 64).unwrap();
-			let text_color = Color::RGBA(255, 255, 255, 255);
-
 			let mut events = sdl_context.event_pump().unwrap();
 
 			// loop until we receive a QuitEvent
@@ -93,33 +65,15 @@ system!( graphics {
 						_               => continue
 					}
 				}
-
-				let last_frame: Instant;
-				let ticks_per_second: i64;
-
-				{
-					let mut state = STATE.write().expect("Graphics lock is corrupted");
-					last_frame = state.last_frame.unwrap_or(Instant::now());
-					state.last_frame = Some(Instant::now());
-					ticks_per_second = state.ticks_per_second;
-				}
-
-				let now = Instant::now();
-				let frame_duration = now - last_frame;
-				let frames_per_second = NANOS_PER_SEC / frame_duration.subsec_nanos();
-
-				let text = format!("Ticks: {}  FPS: {}", ticks_per_second, frames_per_second);
-
-				 // render a surface, and convert it to a texture bound to the renderer
-				let surface = font.render(&text).blended(text_color).unwrap();
-				let mut texture = renderer.create_texture_from_surface(&surface).unwrap();
-				let TextureQuery { width, height, .. } = texture.query();
-
-				let padding = 10;
-				let target = Rect::new(10, 10, 110, 20);
-
 				renderer.clear();
-				renderer.copy(&mut texture, None, Some(target));
+				{
+					let mut context = Context {
+						renderer: &mut renderer,
+						sdl: &sdl_context,
+						ttf: &ttf_context
+					};
+					//draw::trigger(&context);
+				}
 				renderer.present();
 			}
 
@@ -127,9 +81,72 @@ system!( graphics {
 	}
 });
 
+/*
+system!( fps_tracker {
+	use entity_rust::tick as game_tick;
+	use std::time::{ Duration, Instant };
+	use sdl2::pixels::{Color};
+	use sdl2::render::{Texture, TextureQuery};
+	use std::path::Path;
+	use sdl2::rect::Rect;
+
+	use super::graphics::draw;
+
+
+	const NANOS_PER_SEC: u32 = 1_000_000_000;
+
+	state! {
+		last_frame: Option<Instant>,
+		last_tick: Option<Instant>,
+		ticks_per_second: i64
+	}
+
+	on game_tick , {}, {}, (self, data) => {
+		let last_tick = self.last_tick.unwrap_or(Instant::now());
+		let now = Instant::now();
+		let tick_duration = (now - last_tick).subsec_nanos();
+		if tick_duration > 0 {
+			self.ticks_per_second = (NANOS_PER_SEC / tick_duration) as i64;
+		}
+		self.last_tick = Some(Instant::now());
+	}
+
+	on_sync draw, (self, context) => {
+		let font_path = Path::new("res/SourceSansPro-Regular.ttf");
+		let font = context.ttf.load_font(font_path, 64).unwrap();
+
+		let text_color = Color::RGBA(255, 255, 255, 255);
+		let last_frame: Instant;
+		let ticks_per_second: i64;
+
+
+		last_frame = self.last_frame.unwrap_or(Instant::now());
+		self.last_frame = Some(Instant::now());
+		ticks_per_second = self.ticks_per_second;
+
+		let now = Instant::now();
+		let frame_duration = now - last_frame;
+		let frames_per_second = NANOS_PER_SEC / frame_duration.subsec_nanos();
+
+		let text = format!("Ticks: {}  FPS: {}", ticks_per_second, frames_per_second);
+
+		 // render a surface, and convert it to a texture bound to the renderer
+		let surface = font.render(&text).blended(text_color).unwrap();
+		let mut texture = context.renderer.create_texture_from_surface(&surface).unwrap();
+		let TextureQuery { width, height, .. } = texture.query();
+
+		let padding = 10;
+		let target = Rect::new(10, 10, 110, 20);
+
+		let ref mut renderer = context.renderer;
+
+		renderer.copy(&mut texture, None, Some(target));
+	}
+} );
+*/
+
 pub fn main() {
-	tick_logger::register();
 	graphics::register();
-	start_graphics::trigger();
-	entity_rust::run(60);
+	graphics::start_graphics::trigger();
+	entity_rust::run(60); // run 60 ticks per second
 }
