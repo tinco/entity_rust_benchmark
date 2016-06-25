@@ -18,14 +18,14 @@ system!( graphics {
 	use sdl2::render::Renderer;
 
 	pub struct Context<'a> {
-		pub renderer: &'a mut Renderer<'a>,
+		pub renderer: &'a mut Renderer<'static>,
 		pub sdl: &'a sdl2::Sdl,
 		pub ttf: &'a sdl2_ttf::Sdl2TtfContext
 	}
 	
 	event!{ start_graphics , }
 
-	sync_event!{ draw, context: &'a super::Context<'a>}
+	sync_event!{ draw, context: &'a mut super::Context<'b>}
 
 	state! {}
 
@@ -72,7 +72,7 @@ system!( graphics {
 						sdl: &sdl_context,
 						ttf: &ttf_context
 					};
-					//draw::trigger(&context);
+					draw::trigger(&mut context);
 				}
 				renderer.present();
 			}
@@ -81,7 +81,6 @@ system!( graphics {
 	}
 });
 
-/*
 system!( fps_tracker {
 	use entity_rust::tick as game_tick;
 	use std::time::{ Duration, Instant };
@@ -91,7 +90,6 @@ system!( fps_tracker {
 	use sdl2::rect::Rect;
 
 	use super::graphics::draw;
-
 
 	const NANOS_PER_SEC: u32 = 1_000_000_000;
 
@@ -143,10 +141,10 @@ system!( fps_tracker {
 		renderer.copy(&mut texture, None, Some(target));
 	}
 } );
-*/
 
 pub fn main() {
 	graphics::register();
+	fps_tracker::register();
 	graphics::start_graphics::trigger();
 	entity_rust::run(60); // run 60 ticks per second
 }
