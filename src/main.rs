@@ -31,8 +31,8 @@ system!( graphics {
 
 	on start_graphics , {}, {}, (self, data) => {
 		thread::spawn(move || {
-			let SCREEN_WIDTH = 800;
-			let SCREEN_HEIGHT = 600;
+			const SCREEN_WIDTH : u32 = 800;
+			const SCREEN_HEIGHT : u32 = 600;
 
 			let sdl_context = sdl2::init().expect("Could not initialize sdl2");
 			let ttf_context = sdl2_ttf::init().expect("Could not initialize ttf");
@@ -52,8 +52,6 @@ system!( graphics {
 				.expect("Could not build renderer");
 
 			renderer.set_draw_color(Color::RGB(50, 0, 0));
-			renderer.clear();
-			renderer.present();
 
 			let mut events = sdl_context.event_pump().unwrap();
 
@@ -83,9 +81,9 @@ system!( graphics {
 
 system!( fps_tracker {
 	use entity_rust::tick as game_tick;
-	use std::time::{ Duration, Instant };
-	use sdl2::pixels::{Color};
-	use sdl2::render::{Texture, TextureQuery};
+	use std::time::{ Instant };
+	use sdl2::pixels::{ Color };
+	use sdl2::render::{ TextureQuery };
 	use std::path::Path;
 	use sdl2::rect::Rect;
 
@@ -119,7 +117,7 @@ system!( fps_tracker {
 		self.last_frame = Some(Instant::now());
 		ticks_per_second = self.ticks_per_second;
 
-		let mut frames_per_second : i64 = 0;
+		let mut frames_per_second : i64;
 
 		if self.ticks_since_fps_update > 5 {
 			self.ticks_since_fps_update = 0;
