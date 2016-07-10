@@ -16,7 +16,7 @@ system!( graphics {
 
 	sync_event!{ draw, context: &'a mut super::Context<'b>}
 
-	state! {}
+	state {} {}
 
 	on start_graphics , {}, {}, (self, data) => {
 		thread::spawn(move || {
@@ -59,7 +59,7 @@ system!( graphics {
 						sdl: &sdl_context,
 						ttf: &ttf_context
 					};
-					// draw::trigger(&mut context);
+					draw::trigger(&mut context);
 				}
 				renderer.present();
 			}

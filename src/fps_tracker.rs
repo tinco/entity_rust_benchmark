@@ -10,30 +10,36 @@ system!( fps_tracker {
 
 	const NANOS_PER_SEC: u32 = 1_000_000_000;
 
-	state! {
-		last_frame: Option<Instant>,
-		last_tick: Option<Instant>,
+	state {
+		last_frame: Instant,
+		last_tick: Instant,
 		ticks_per_second: i64,
 		frames_per_second: i64,
 		ticks_since_fps_update: i64
+	} {
+		last_frame = Instant::now();
+		last_tick = Instant::now();
+		ticks_per_second = 0;
+		frames_per_second = 0;
+		ticks_since_fps_update = 0;
 	}
 
 	on game_tick , {}, {}, (self, data) => {
 		self.ticks_since_fps_update += 1;
-		let last_tick = self.last_tick.unwrap_or(Instant::now());
+		let last_tick = self.last_tick;
 		let now = Instant::now();
 		let tick_duration = (now - last_tick).subsec_nanos();
 		if tick_duration > 0 && self.ticks_since_fps_update > 5 {
 			self.ticks_per_second = (NANOS_PER_SEC / tick_duration) as i64;
 		}
-		self.last_tick = Some(Instant::now());
+		self.last_tick = Instant::now();
 	}
 
 	on_sync draw, (self, context) => {
 		let last_frame: Instant;
 		let ticks_per_second: i64;
-		last_frame = self.last_frame.unwrap_or(Instant::now());
-		self.last_frame = Some(Instant::now());
+		last_frame = self.last_frame;
+		self.last_frame = Instant::now();
 		ticks_per_second = self.ticks_per_second;
 
 		let mut frames_per_second : i64;
